@@ -68,6 +68,12 @@ fn scanToken(i: u8) Token {
         ')' => {
             return addToken(.RIGHT_PAREN, ")", null);
         },
+        '{' => {
+            return addToken(.LEFT_BRACE, "{", null);
+        },
+        '}' => {
+            return addToken(.RIGHT_BRACE, "}", null);
+        },
         0 => {
             return addToken(.EOF, "", null);
         },
