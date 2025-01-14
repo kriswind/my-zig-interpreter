@@ -74,6 +74,24 @@ fn scanToken(i: u8) Token {
         '}' => {
             return addToken(.RIGHT_BRACE, "}", null);
         },
+        '*' => {
+            return addToken(.STAR, "*", null);
+        },
+        '.' => {
+            return addToken(.DOT, ".", null);
+        },
+        ',' => {
+            return addToken(.COMMA, ",", null);
+        },
+        '+' => {
+            return addToken(.PLUS, "+", null);
+        },
+        '-' => {
+            return addToken(.MINUS, "-", null);
+        },
+        ';' => {
+            return addToken(.SEMICOLON, ";", null);
+        },
         0 => {
             return addToken(.EOF, "", null);
         },
