@@ -57,19 +57,19 @@ const Token = struct {
 };
 
 fn addToken(tokenType: TokenType, lexeme: u8, literal: ?[]u8) Token {
-    return Token{ .type = tokenType, .lexeme = &[_]u8{lexeme}, .literal = literal };
+    return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
 
 fn scanToken(i: u8) Token {
     switch (i) {
         '(' => {
-            return addToken(.LEFT_PAREN, i, null);
+            return addToken(.LEFT_PAREN, "(", null);
         },
         ')' => {
-            return addToken(.RIGHT_PAREN, i, null);
+            return addToken(.RIGHT_PAREN, ")", null);
         },
         0 => {
-            return addToken(.EOF, i, null);
+            return addToken(.EOF, "", null);
         },
         else => {
             return addToken(.IDENTIFIER, i, null); // Default to IDENTIFIER for now
@@ -79,7 +79,7 @@ fn scanToken(i: u8) Token {
 
 fn printToken(i: u8) !void {
     const token: Token = scanToken(i);
-    try std.io.getStdOut().writer().print("{any} {any} {any}\n", .{ token.type, token.lexeme, token.literal });
+    try std.io.getStdOut().writer().print("{any} {s} {any}\n", .{ token.type, token.lexeme, token.literal });
 }
 
 pub fn main() !void {
