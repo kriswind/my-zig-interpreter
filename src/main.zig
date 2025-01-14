@@ -54,41 +54,34 @@ const Token = struct {
     type: TokenType,
     lexeme: []const u8,
     literal: ?[]u8,
-    line: ?i32,
 };
 
-// TODO Add line support
-fn addToken(@"type": TokenType, lexeme: ?[]const u8, literal: ?[]u8) Token!void {
-    if (!lexeme) {
-        lexeme = "";
-    }
-    if (!literal) {
-        literal = null;
-    }
-    return Token{ .type = @"type", .lexeme = lexeme, .literal = literal };
+fn addToken(tokenType: TokenType, lexeme: u8, literal: ?[]u8) Token {
+    return Token{ .type = tokenType, .lexeme = &[_]u8{lexeme}, .literal = literal };
 }
 
-fn scanToken(i: u8) Token!void {
+fn scanToken(i: u8) Token {
     switch (i) {
         '(' => {
-            return addToken("LEFT_PAREN", i);
+            return addToken(.LEFT_PAREN, i, null);
         },
         ')' => {
-            return addToken("RIGHT_PAREN", i);
+            return addToken(.RIGHT_PAREN, i, null);
         },
         0 => {
-            return addToken("EOF");
+            return addToken(.EOF, i, null);
         },
         else => {
-            return null;
+            return addToken(.IDENTIFIER, i, null); // Default to IDENTIFIER for now
         },
     }
 }
 
 fn printToken(i: u8) !void {
     const token: Token = scanToken(i);
-    std.io.getStdOut().writer().print("{s} {s} {any}\n", .{ token.type, token.lexeme, token.literal });
+    try std.io.getStdOut().writer().print("{any} {any} {any}\n", .{ token.type, token.lexeme, token.literal });
 }
+
 pub fn main() !void {
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     defer std.process.argsFree(std.heap.page_allocator, args);
