@@ -56,7 +56,7 @@ const Token = struct {
     literal: ?[]u8,
 };
 
-fn addToken(tokenType: TokenType, lexeme: u8, literal: ?[]u8) Token {
+fn addToken(tokenType: TokenType, lexeme: []const u8, literal: ?[]u8) Token {
     return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
 
@@ -72,14 +72,14 @@ fn scanToken(i: u8) Token {
             return addToken(.EOF, "", null);
         },
         else => {
-            return addToken(.IDENTIFIER, i, null); // Default to IDENTIFIER for now
+            return addToken(.EOF, "", null);
         },
     }
 }
 
-fn printToken(i: u8) !void {
-    const token: Token = scanToken(i);
-    try std.io.getStdOut().writer().print("{any} {s} {any}\n", .{ token.type, token.lexeme, token.literal });
+fn printToken(token: Token) !void {
+    const typeName = @tagName(token.type);
+    try std.io.getStdOut().writer().print("{s} {s} {any}\n", .{ typeName, token.lexeme, token.literal });
 }
 
 pub fn main() !void {
@@ -107,7 +107,10 @@ pub fn main() !void {
             if (i == '\n') {
                 continue;
             }
-            try printToken(i);
+            try printToken(scanToken(i));
         }
-    } else {}
+    } else {
+        // File is empty
+    }
+    try printToken(scanToken(0));
 }
