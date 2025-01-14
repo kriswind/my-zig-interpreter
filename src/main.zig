@@ -1,5 +1,94 @@
 const std = @import("std");
 
+const TokenType = enum {
+    // Single-character tokens.
+    LEFT_PAREN,
+    RIGHT_PAREN,
+    LEFT_BRACE,
+    RIGHT_BRACE,
+    COMMA,
+    DOT,
+    MINUS,
+    PLUS,
+    SEMICOLON,
+    SLASH,
+    STAR,
+
+    // One or two character tokens.
+    BANG,
+    BANG_EQUAL,
+    EQUAL,
+    EQUAL_EQUAL,
+    GREATER,
+    GREATER_EQUAL,
+    LESS,
+    LESS_EQUAL,
+
+    // Literals.
+    IDENTIFIER,
+    STRING,
+    NUMBER,
+
+    // Keywords.
+    AND,
+    CLASS,
+    ELSE,
+    FALSE,
+    FUN,
+    FOR,
+    IF,
+    NIL,
+    OR,
+    PRINT,
+    RETURN,
+    SUPER,
+    THIS,
+    TRUE,
+    VAR,
+    WHILE,
+
+    EOF,
+};
+
+const Token = struct {
+    type: TokenType,
+    lexeme: []const u8,
+    literal: ?[]u8,
+    line: ?i32,
+};
+
+// TODO Add line support
+fn addToken(@"type": TokenType, lexeme: ?[]const u8, literal: ?[]u8) Token!void {
+    if (!lexeme) {
+        lexeme = "";
+    }
+    if (!literal) {
+        literal = null;
+    }
+    return Token{ .type = @"type", .lexeme = lexeme, .literal = literal };
+}
+
+fn scanToken(i: u8) Token!void {
+    switch (i) {
+        '(' => {
+            return addToken("LEFT_PAREN", i);
+        },
+        ')' => {
+            return addToken("RIGHT_PAREN", i);
+        },
+        0 => {
+            return addToken("EOF");
+        },
+        else => {
+            return null;
+        },
+    }
+}
+
+fn printToken(i: u8) !void {
+    const token: Token = scanToken(i);
+    std.io.getStdOut().writer().print("{s} {s} {any}\n", .{ token.type, token.lexeme, token.literal });
+}
 pub fn main() !void {
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     defer std.process.argsFree(std.heap.page_allocator, args);
@@ -21,8 +110,11 @@ pub fn main() !void {
     defer std.heap.page_allocator.free(file_contents);
 
     if (file_contents.len > 0) {
-        @panic("Scanner not implemented");
-    } else {
-        try std.io.getStdOut().writer().print("EOF  null\n", .{}); // Placeholder, remove this line when implementing the scanner
-    }
+        for (file_contents) |i| {
+            if (i == '\n') {
+                continue;
+            }
+            try printToken(i);
+        }
+    } else {}
 }
