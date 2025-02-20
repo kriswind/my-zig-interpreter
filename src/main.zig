@@ -62,6 +62,39 @@ const ScanResult = struct {
     consumed: usize,
 };
 
+fn isKeyword(identifier: []const u8) ?TokenType {
+    const keywords = std.ComptimeStringMap(TokenType, .{
+        .{ "and", .AND },
+        .{ "class", .CLASS },
+        .{ "else", .ELSE },
+        .{ "false", .FALSE },
+        .{ "for", .FOR },
+        .{ "fun", .FUN },
+        .{ "if", .IF },
+        .{ "nil", .NIL },
+        .{ "or", .OR },
+        .{ "print", .PRINT },
+        .{ "return", .RETURN },
+        .{ "super", .SUPER },
+        .{ "this", .THIS },
+        .{ "true", .TRUE },
+        .{ "var", .VAR },
+        .{ "while", .WHILE },
+    });
+
+    return keywords.get(identifier);
+}
+
+fn isAlpha(c: u8) bool {
+    return (c >= 'a' and c <= 'z') or
+        (c >= 'A' and c <= 'Z') or
+        c == '_';
+}
+
+fn isAlphaNumeric(c: u8) bool {
+    return isAlpha(c) or std.ascii.isDigit(c);
+}
+
 fn addToken(tokenType: TokenType, lexeme: []const u8, literal: []const u8) Token {
     return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
@@ -126,6 +159,20 @@ fn scanToken(line: []const u8, index: usize) !ScanResult {
 
         const normalized = try trimTrailingZeros(number_str);
         return ScanResult{ .token = addToken(.NUMBER, number_str, normalized), .consumed = end - index };
+    }
+    if (isAlpha(curr_char)) {
+        var end: usize = index;
+        while (end < line.len and isAlphaNumeric(line[end])) {
+            end += 1;
+        }
+
+        const identifier = line[index..end];
+        const token_type = isKeyword(identifier) orelse .IDENTIFIER;
+
+        return ScanResult{
+            .token = addToken(token_type, identifier, "null"),
+            .consumed = end - index,
+        };
     }
     switch (curr_char) {
         '!' => {
