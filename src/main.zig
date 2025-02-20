@@ -54,14 +54,19 @@ const TokenType = enum {
 const Token = struct {
     type: TokenType,
     lexeme: []const u8,
-    literal: ?[]u8,
+    literal: []const u8,
 };
 
-fn addToken(tokenType: TokenType, lexeme: []const u8, literal: ?[]u8) Token {
+const ScanResult = struct {
+    token: ?Token,
+    consumed: usize,
+};
+
+fn addToken(tokenType: TokenType, lexeme: []const u8, literal: []const u8) Token {
     return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
 
-fn scanToken(line: []const u8, index: usize) !struct { ?Token, usize } {
+fn scanToken(line: []const u8, index: usize) !ScanResult {
     if (index >= line.len) {
         return error.EndOfInput;
     }
@@ -71,43 +76,56 @@ fn scanToken(line: []const u8, index: usize) !struct { ?Token, usize } {
 
     switch (curr_char) {
         '!' => {
-            if (next_char == '=') return .{ addToken(.BANG_EQUAL, "!=", null), 2 };
-            return .{ addToken(.BANG, "!", null), 1 };
+            if (next_char == '=') return ScanResult{ .token = addToken(.BANG_EQUAL, "!=", "null"), .consumed = 2 };
+            return ScanResult{ .token = addToken(.BANG, "!", "null"), .consumed = 1 };
         },
         '=' => {
-            if (next_char == '=') return .{ addToken(.EQUAL_EQUAL, "==", null), 2 };
-            return .{ addToken(.EQUAL, "=", null), 1 };
+            if (next_char == '=') return ScanResult{ .token = addToken(.EQUAL_EQUAL, "==", "null"), .consumed = 2 };
+            return ScanResult{ .token = addToken(.EQUAL, "=", "null"), .consumed = 1 };
         },
         '<' => {
-            if (next_char == '=') return .{ addToken(.LESS_EQUAL, "<=", null), 2 };
-            return .{ addToken(.LESS, "<", null), 1 };
+            if (next_char == '=') return ScanResult{ .token = addToken(.LESS_EQUAL, "<=", "null"), .consumed = 2 };
+            return ScanResult{ .token = addToken(.LESS, "<", "null"), .consumed = 1 };
         },
         '>' => {
-            if (next_char == '=') return .{ addToken(.GREATER_EQUAL, ">=", null), 2 };
-            return .{ addToken(.GREATER, ">", null), 1 };
+            if (next_char == '=') return ScanResult{ .token = addToken(.GREATER_EQUAL, ">=", "null"), .consumed = 2 };
+            return ScanResult{ .token = addToken(.GREATER, ">", "null"), .consumed = 1 };
         },
         '/' => {
-            if (next_char == '/') return .{ addToken(.SLASH_SLASH, "//", null), 2 };
-            return .{ addToken(.SLASH, "/", null), 1 };
+            if (next_char == '/') return ScanResult{ .token = addToken(.SLASH_SLASH, "//", "null"), .consumed = 2 };
+            return ScanResult{ .token = addToken(.SLASH, "/", "null"), .consumed = 1 };
         },
-        '(' => return .{ addToken(.LEFT_PAREN, "(", null), 1 },
-        ')' => return .{ addToken(.RIGHT_PAREN, ")", null), 1 },
-        '{' => return .{ addToken(.LEFT_BRACE, "{", null), 1 },
-        '}' => return .{ addToken(.RIGHT_BRACE, "}", null), 1 },
-        '*' => return .{ addToken(.STAR, "*", null), 1 },
-        '.' => return .{ addToken(.DOT, ".", null), 1 },
-        ',' => return .{ addToken(.COMMA, ",", null), 1 },
-        '+' => return .{ addToken(.PLUS, "+", null), 1 },
-        '-' => return .{ addToken(.MINUS, "-", null), 1 },
-        ';' => return .{ addToken(.SEMICOLON, ";", null), 1 },
-        ' ', '\t', '\r', '\n' => return .{ null, 1 },
+        '(' => return ScanResult{ .token = addToken(.LEFT_PAREN, "(", "null"), .consumed = 1 },
+        ')' => return ScanResult{ .token = addToken(.RIGHT_PAREN, ")", "null"), .consumed = 1 },
+        '{' => return ScanResult{ .token = addToken(.LEFT_BRACE, "{", "null"), .consumed = 1 },
+        '}' => return ScanResult{ .token = addToken(.RIGHT_BRACE, "}", "null"), .consumed = 1 },
+        '*' => return ScanResult{ .token = addToken(.STAR, "*", "null"), .consumed = 1 },
+        '.' => return ScanResult{ .token = addToken(.DOT, ".", "null"), .consumed = 1 },
+        ',' => return ScanResult{ .token = addToken(.COMMA, ",", "null"), .consumed = 1 },
+        '+' => return ScanResult{ .token = addToken(.PLUS, "+", "null"), .consumed = 1 },
+        '-' => return ScanResult{ .token = addToken(.MINUS, "-", "null"), .consumed = 1 },
+        ';' => return ScanResult{ .token = addToken(.SEMICOLON, ";", "null"), .consumed = 1 },
+        '"' => {
+            var end: usize = index + 1;
+            while (end < line.len and line[end] != '"') {
+                end += 1;
+            }
+
+            if (end == line.len) {
+                return error.UnterminatedString;
+            }
+
+            const literal = line[index + 1 .. end];
+            return ScanResult{ .token = addToken(.STRING, line[index .. end + 1], literal), .consumed = end - index + 1 };
+        },
+        ' ', '\t', '\r', '\n' => return ScanResult{ .token = null, .consumed = 1 },
         else => return error.InvalidCharacter,
     }
 }
 
 fn printToken(token: Token) !void {
     const typeName = @tagName(token.type);
-    try std.io.getStdOut().writer().print("{s} {s} {any}\n", .{ typeName, token.lexeme, token.literal });
+    try std.io.getStdOut().writer().print("{s} {s} {s}\n", .{ typeName, token.lexeme, token.literal });
 }
 
 pub fn main() !void {
@@ -147,8 +165,8 @@ pub fn main() !void {
             var index: usize = 0;
             while (index < lineSlice.len) {
                 if (scanToken(lineSlice, index)) |result| {
-                    const token = result[0];
-                    const consumed = result[1];
+                    const token = result.token;
+                    const consumed = result.consumed;
 
                     if (token) |t| { // Unwrap the optional safely
                         if (t.type == .SLASH_SLASH) {
@@ -162,6 +180,10 @@ pub fn main() !void {
                         std.debug.print("[line {}] Error: Unexpected character: {c}\n", .{ line, lineSlice[index] });
                         exit_code = 65;
                         index += 1;
+                    } else if (err == error.UnterminatedString) {
+                        std.debug.print("[line {}] Error: Unterminated string.\n", .{line});
+                        exit_code = 65;
+                        break;
                     } else if (err == error.EndOfInput) {
                         break;
                     }
@@ -173,7 +195,7 @@ pub fn main() !void {
         }
     }
 
-    const eof_token = addToken(.EOF, "", null);
+    const eof_token = addToken(.EOF, "", "null");
     try printToken(eof_token);
 
     std.process.exit(exit_code);
