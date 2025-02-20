@@ -60,7 +60,7 @@ fn addToken(tokenType: TokenType, lexeme: []const u8, literal: ?[]u8) Token {
     return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
 
-fn scanToken(i: u8) Token {
+fn scanToken(i: u8) !Token {
     switch (i) {
         '(' => {
             return addToken(.LEFT_PAREN, "(", null);
@@ -96,7 +96,7 @@ fn scanToken(i: u8) Token {
             return addToken(.EOF, "", null);
         },
         else => {
-            return addToken(.EOF, "", null);
+            return error.InvalidCharacter;
         },
     }
 }
@@ -109,6 +109,7 @@ fn printToken(token: Token) !void {
 pub fn main() !void {
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     defer std.process.argsFree(std.heap.page_allocator, args);
+    var exit_code: u8 = 0;
 
     if (args.len < 3) {
         std.debug.print("Usage: ./your_program.sh tokenize <filename>\n", .{});
@@ -127,14 +128,30 @@ pub fn main() !void {
     defer std.heap.page_allocator.free(file_contents);
 
     if (file_contents.len > 0) {
+        var line: u8 = 1;
         for (file_contents) |i| {
             if (i == '\n') {
+                line += 1;
                 continue;
             }
-            try printToken(scanToken(i));
+
+            if (scanToken(i)) |token| {
+                try printToken(token);
+            } else |err| {
+                if (err == error.InvalidCharacter) {
+                    std.debug.print("[line {}] Error: Unexpected character: {c}\n", .{ line, i });
+                    exit_code = 65;
+                }
+            }
         }
-    } else {
-        // File is empty
     }
-    try printToken(scanToken(0));
+
+    if (scanToken(0)) |token| {
+        try printToken(token);
+    } else |err| {
+        std.debug.print("Error at EOF: {}\n", .{err});
+        exit_code = 65;
+    }
+
+    std.process.exit(exit_code);
 }
