@@ -66,6 +66,30 @@ fn addToken(tokenType: TokenType, lexeme: []const u8, literal: []const u8) Token
     return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
 
+fn trimTrailingZeros(number: []const u8) ![]u8 {
+    // Find the decimal point
+    for (number, 0..) |char, i| {
+        if (char == '.') {
+            // Start from the end and find last non-zero digit
+            var last_non_zero: usize = number.len - 1;
+            while (last_non_zero > i and number[last_non_zero] == '0') {
+                last_non_zero -= 1;
+            }
+
+            // If we ended at decimal point, add one zero after it
+            if (last_non_zero == i) {
+                last_non_zero += 1;
+            }
+
+            // Allocate and copy the trimmed number
+            const result = try std.heap.page_allocator.alloc(u8, last_non_zero + 1);
+            @memcpy(result[0 .. last_non_zero + 1], number[0 .. last_non_zero + 1]);
+            return result;
+        }
+    }
+    return try std.heap.page_allocator.dupe(u8, number);
+}
+
 fn scanToken(line: []const u8, index: usize) !ScanResult {
     if (index >= line.len) {
         return error.EndOfInput;
@@ -74,6 +98,35 @@ fn scanToken(line: []const u8, index: usize) !ScanResult {
     const curr_char = line[index];
     const next_char: u8 = if (index + 1 < line.len) line[index + 1] else 0;
 
+    if (std.ascii.isDigit(curr_char)) {
+        var end: usize = index;
+        var dot: bool = false;
+        while (end < line.len and (std.ascii.isDigit(line[end]) or line[end] == '.')) {
+            if (line[end] == '.') {
+                if (dot) {
+                    break;
+                }
+                dot = true;
+            }
+            end += 1;
+        }
+        if (end > line.len) {
+            return error.InvalidCharacter;
+        }
+
+        const number_str = line[index..end];
+        if (!dot) {
+            const buffer = try std.heap.page_allocator.alloc(u8, number_str.len + 2);
+            @memcpy(buffer[0..number_str.len], number_str);
+            buffer[number_str.len] = '.';
+            buffer[number_str.len + 1] = '0';
+
+            return ScanResult{ .token = addToken(.NUMBER, number_str, buffer), .consumed = end - index };
+        }
+
+        const normalized = try trimTrailingZeros(number_str);
+        return ScanResult{ .token = addToken(.NUMBER, number_str, normalized), .consumed = end - index };
+    }
     switch (curr_char) {
         '!' => {
             if (next_char == '=') return ScanResult{ .token = addToken(.BANG_EQUAL, "!=", "null"), .consumed = 2 };
