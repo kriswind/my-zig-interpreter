@@ -11,10 +11,11 @@ const TokenType = enum {
     MINUS,
     PLUS,
     SEMICOLON,
-    SLASH,
     STAR,
 
     // One or two character tokens.
+    SLASH,
+    SLASH_SLASH,
     BANG,
     BANG_EQUAL,
     EQUAL,
@@ -132,6 +133,16 @@ fn scanToken(i: u8, j: u8) !Token {
                 },
             }
         },
+        '/' => {
+            switch (j) {
+                '/' => {
+                    return addToken(.SLASH_SLASH, "//", null);
+                },
+                else => {
+                    return addToken(.SLASH, "/", null);
+                },
+            }
+        },
         0 => {
             return addToken(.EOF, "", null);
         },
@@ -185,6 +196,13 @@ pub fn main() !void {
             }
 
             if (scanToken(curr_char, next_char)) |token| {
+                // Check if token is a comment
+                if (token.type == .SLASH_SLASH) {
+                    while (file_contents[i] != '\n') {
+                        i += 1;
+                    }
+                    continue;
+                }
                 try printToken(token);
                 if (token.lexeme.len > 1) {
                     i += token.lexeme.len - 1;
