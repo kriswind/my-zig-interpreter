@@ -1,0 +1,7 @@
+var x = 1
+var y = 2
+print(x + y)
+
+var str = "dog"
+var str2 = "cat"
+print(str ++ str2)
