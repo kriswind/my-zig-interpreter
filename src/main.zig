@@ -57,6 +57,42 @@ const Token = struct {
     literal: []const u8,
 };
 
+const KeywordSlice = [_]struct { []const u8, TokenType }{
+    .{ "and", .AND },
+
+    .{ "class", .CLASS },
+
+    .{ "else", .ELSE },
+
+    .{ "false", .FALSE },
+
+    .{ "for", .FOR },
+
+    .{ "fun", .FUN },
+
+    .{ "if", .IF },
+
+    .{ "nil", .NIL },
+
+    .{ "or", .OR },
+
+    .{ "print", .PRINT },
+
+    .{ "return", .RETURN },
+
+    .{ "super", .SUPER },
+
+    .{ "this", .THIS },
+
+    .{ "true", .TRUE },
+
+    .{ "var", .VAR },
+
+    .{ "while", .WHILE },
+};
+
+const keyword_type_map = std.StaticStringMap(TokenType).initComptime(KeywordSlice);
+
 const ScanResult = struct {
     token: ?Token,
     consumed: usize,
@@ -98,6 +134,10 @@ fn trimTrailingZeros(number: []const u8) ![]u8 {
         }
     }
     return try std.heap.page_allocator.dupe(u8, number);
+}
+
+fn isKeyword(identifier: []const u8) ?TokenType {
+    return keyword_type_map.get(identifier);
 }
 
 fn scanToken(line: []const u8, index: usize) !ScanResult {
@@ -144,7 +184,7 @@ fn scanToken(line: []const u8, index: usize) !ScanResult {
         }
 
         const identifier = line[index..end];
-        const token_type = .IDENTIFIER;
+        const token_type = isKeyword(identifier) orelse .IDENTIFIER;
 
         return ScanResult{
             .token = addToken(token_type, identifier, "null"),
