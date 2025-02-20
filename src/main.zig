@@ -112,6 +112,26 @@ fn scanToken(i: u8, j: u8) !Token {
                 },
             }
         },
+        '<' => {
+            switch (j) {
+                '=' => {
+                    return addToken(.LESS_EQUAL, "<=", null);
+                },
+                else => {
+                    return addToken(.LESS, "<", null);
+                },
+            }
+        },
+        '>' => {
+            switch (j) {
+                '=' => {
+                    return addToken(.GREATER_EQUAL, ">=", null);
+                },
+                else => {
+                    return addToken(.GREATER, ">", null);
+                },
+            }
+        },
         0 => {
             return addToken(.EOF, "", null);
         },
