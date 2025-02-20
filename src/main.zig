@@ -62,6 +62,16 @@ fn addToken(tokenType: TokenType, lexeme: []const u8, literal: ?[]u8) Token {
 
 fn scanToken(i: u8, j: u8) !Token {
     switch (i) {
+        '!' => {
+            switch (j) {
+                '=' => {
+                    return addToken(.BANG_EQUAL, "!=", null);
+                },
+                else => {
+                    return addToken(.BANG, "!", null);
+                },
+            }
+        },
         '(' => {
             return addToken(.LEFT_PAREN, "(", null);
         },
