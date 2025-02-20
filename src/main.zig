@@ -62,29 +62,6 @@ const ScanResult = struct {
     consumed: usize,
 };
 
-fn isKeyword(identifier: []const u8) ?TokenType {
-    const keywords = std.ComptimeStringMap(TokenType, .{
-        .{ "and", .AND },
-        .{ "class", .CLASS },
-        .{ "else", .ELSE },
-        .{ "false", .FALSE },
-        .{ "for", .FOR },
-        .{ "fun", .FUN },
-        .{ "if", .IF },
-        .{ "nil", .NIL },
-        .{ "or", .OR },
-        .{ "print", .PRINT },
-        .{ "return", .RETURN },
-        .{ "super", .SUPER },
-        .{ "this", .THIS },
-        .{ "true", .TRUE },
-        .{ "var", .VAR },
-        .{ "while", .WHILE },
-    });
-
-    return keywords.get(identifier);
-}
-
 fn isAlpha(c: u8) bool {
     return (c >= 'a' and c <= 'z') or
         (c >= 'A' and c <= 'Z') or
@@ -167,7 +144,7 @@ fn scanToken(line: []const u8, index: usize) !ScanResult {
         }
 
         const identifier = line[index..end];
-        const token_type = isKeyword(identifier) orelse .IDENTIFIER;
+        const token_type = .IDENTIFIER;
 
         return ScanResult{
             .token = addToken(token_type, identifier, "null"),
