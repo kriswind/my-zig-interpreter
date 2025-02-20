@@ -198,13 +198,14 @@ pub fn main() !void {
             if (scanToken(curr_char, next_char)) |token| {
                 // Check if token is a comment
                 if (token.type == .SLASH_SLASH) {
-                    while (file_contents[i] != '\n') {
+                    while (i < file_contents.len and file_contents[i] != '\n') {
                         i += 1;
                     }
                     continue;
                 }
                 try printToken(token);
-                if (token.lexeme.len > 1) {
+
+                if (i + (token.lexeme.len - 1) < file_contents.len) {
                     i += token.lexeme.len - 1;
                 }
             } else |err| {
