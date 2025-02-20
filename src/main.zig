@@ -60,7 +60,7 @@ fn addToken(tokenType: TokenType, lexeme: []const u8, literal: ?[]u8) Token {
     return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
 
-fn scanToken(i: u8) !Token {
+fn scanToken(i: u8, j: u8) !Token {
     switch (i) {
         '(' => {
             return addToken(.LEFT_PAREN, "(", null);
@@ -91,6 +91,16 @@ fn scanToken(i: u8) !Token {
         },
         ';' => {
             return addToken(.SEMICOLON, ";", null);
+        },
+        '=' => {
+            switch (j) {
+                '=' => {
+                    return addToken(.EQUAL_EQUAL, "==", null);
+                },
+                else => {
+                    return addToken(.EQUAL, "=", null);
+                },
+            }
         },
         0 => {
             return addToken(.EOF, "", null);
@@ -129,24 +139,37 @@ pub fn main() !void {
 
     if (file_contents.len > 0) {
         var line: u8 = 1;
-        for (file_contents) |i| {
-            if (i == '\n') {
+        var i: usize = 0;
+
+        while (i < file_contents.len) {
+            const curr_char: u8 = file_contents[i];
+            var next_char: u8 = 0;
+
+            if (i + 1 < file_contents.len) {
+                next_char = file_contents[i + 1];
+            }
+            if (curr_char == '\n') {
                 line += 1;
+                i += 1;
                 continue;
             }
 
-            if (scanToken(i)) |token| {
+            if (scanToken(curr_char, next_char)) |token| {
                 try printToken(token);
+                if (token.lexeme.len > 1) {
+                    i += token.lexeme.len - 1;
+                }
             } else |err| {
                 if (err == error.InvalidCharacter) {
-                    std.debug.print("[line {}] Error: Unexpected character: {c}\n", .{ line, i });
+                    std.debug.print("[line {}] Error: Unexpected character: {c}\n", .{ line, curr_char });
                     exit_code = 65;
                 }
             }
+            i += 1;
         }
     }
 
-    if (scanToken(0)) |token| {
+    if (scanToken(0, 0)) |token| {
         try printToken(token);
     } else |err| {
         std.debug.print("Error at EOF: {}\n", .{err});
