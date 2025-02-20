@@ -61,94 +61,47 @@ fn addToken(tokenType: TokenType, lexeme: []const u8, literal: ?[]u8) Token {
     return Token{ .type = tokenType, .lexeme = lexeme, .literal = literal };
 }
 
-fn scanToken(i: u8, j: u8) !Token {
-    switch (i) {
+fn scanToken(line: []const u8, index: usize) !struct { ?Token, usize } {
+    if (index >= line.len) {
+        return error.EndOfInput;
+    }
+
+    const curr_char = line[index];
+    const next_char: u8 = if (index + 1 < line.len) line[index + 1] else 0;
+
+    switch (curr_char) {
         '!' => {
-            switch (j) {
-                '=' => {
-                    return addToken(.BANG_EQUAL, "!=", null);
-                },
-                else => {
-                    return addToken(.BANG, "!", null);
-                },
-            }
-        },
-        '(' => {
-            return addToken(.LEFT_PAREN, "(", null);
-        },
-        ')' => {
-            return addToken(.RIGHT_PAREN, ")", null);
-        },
-        '{' => {
-            return addToken(.LEFT_BRACE, "{", null);
-        },
-        '}' => {
-            return addToken(.RIGHT_BRACE, "}", null);
-        },
-        '*' => {
-            return addToken(.STAR, "*", null);
-        },
-        '.' => {
-            return addToken(.DOT, ".", null);
-        },
-        ',' => {
-            return addToken(.COMMA, ",", null);
-        },
-        '+' => {
-            return addToken(.PLUS, "+", null);
-        },
-        '-' => {
-            return addToken(.MINUS, "-", null);
-        },
-        ';' => {
-            return addToken(.SEMICOLON, ";", null);
+            if (next_char == '=') return .{ addToken(.BANG_EQUAL, "!=", null), 2 };
+            return .{ addToken(.BANG, "!", null), 1 };
         },
         '=' => {
-            switch (j) {
-                '=' => {
-                    return addToken(.EQUAL_EQUAL, "==", null);
-                },
-                else => {
-                    return addToken(.EQUAL, "=", null);
-                },
-            }
+            if (next_char == '=') return .{ addToken(.EQUAL_EQUAL, "==", null), 2 };
+            return .{ addToken(.EQUAL, "=", null), 1 };
         },
         '<' => {
-            switch (j) {
-                '=' => {
-                    return addToken(.LESS_EQUAL, "<=", null);
-                },
-                else => {
-                    return addToken(.LESS, "<", null);
-                },
-            }
+            if (next_char == '=') return .{ addToken(.LESS_EQUAL, "<=", null), 2 };
+            return .{ addToken(.LESS, "<", null), 1 };
         },
         '>' => {
-            switch (j) {
-                '=' => {
-                    return addToken(.GREATER_EQUAL, ">=", null);
-                },
-                else => {
-                    return addToken(.GREATER, ">", null);
-                },
-            }
+            if (next_char == '=') return .{ addToken(.GREATER_EQUAL, ">=", null), 2 };
+            return .{ addToken(.GREATER, ">", null), 1 };
         },
         '/' => {
-            switch (j) {
-                '/' => {
-                    return addToken(.SLASH_SLASH, "//", null);
-                },
-                else => {
-                    return addToken(.SLASH, "/", null);
-                },
-            }
+            if (next_char == '/') return .{ addToken(.SLASH_SLASH, "//", null), 2 };
+            return .{ addToken(.SLASH, "/", null), 1 };
         },
-        0 => {
-            return addToken(.EOF, "", null);
-        },
-        else => {
-            return error.InvalidCharacter;
-        },
+        '(' => return .{ addToken(.LEFT_PAREN, "(", null), 1 },
+        ')' => return .{ addToken(.RIGHT_PAREN, ")", null), 1 },
+        '{' => return .{ addToken(.LEFT_BRACE, "{", null), 1 },
+        '}' => return .{ addToken(.RIGHT_BRACE, "}", null), 1 },
+        '*' => return .{ addToken(.STAR, "*", null), 1 },
+        '.' => return .{ addToken(.DOT, ".", null), 1 },
+        ',' => return .{ addToken(.COMMA, ",", null), 1 },
+        '+' => return .{ addToken(.PLUS, "+", null), 1 },
+        '-' => return .{ addToken(.MINUS, "-", null), 1 },
+        ';' => return .{ addToken(.SEMICOLON, ";", null), 1 },
+        ' ', '\t', '\r', '\n' => return .{ null, 1 },
+        else => return error.InvalidCharacter,
     }
 }
 
@@ -180,50 +133,48 @@ pub fn main() !void {
 
     if (file_contents.len > 0) {
         var line: u8 = 1;
-        var i: usize = 0;
+        var start: usize = 0;
 
-        while (i < file_contents.len) {
-            const curr_char: u8 = file_contents[i];
-            var next_char: u8 = 0;
-
-            if (i + 1 < file_contents.len) {
-                next_char = file_contents[i + 1];
-            }
-            if (curr_char == '\n') {
-                line += 1;
-                i += 1;
-                continue;
+        while (start < file_contents.len) {
+            // Extract the current line
+            var end: usize = start;
+            while (end < file_contents.len and file_contents[end] != '\n') {
+                end += 1;
             }
 
-            if (scanToken(curr_char, next_char)) |token| {
-                // Check if token is a comment
-                if (token.type == .SLASH_SLASH) {
-                    while (i < file_contents.len and file_contents[i] != '\n') {
-                        i += 1;
+            const lineSlice = file_contents[start..end]; // Extract line
+
+            var index: usize = 0;
+            while (index < lineSlice.len) {
+                if (scanToken(lineSlice, index)) |result| {
+                    const token = result[0];
+                    const consumed = result[1];
+
+                    if (token) |t| { // Unwrap the optional safely
+                        if (t.type == .SLASH_SLASH) {
+                            break; // Skip rest of the comment line
+                        }
+                        try printToken(t);
                     }
-                    continue;
-                }
-                try printToken(token);
-
-                if (i + (token.lexeme.len - 1) < file_contents.len) {
-                    i += token.lexeme.len - 1;
-                }
-            } else |err| {
-                if (err == error.InvalidCharacter) {
-                    std.debug.print("[line {}] Error: Unexpected character: {c}\n", .{ line, curr_char });
-                    exit_code = 65;
+                    index += consumed;
+                } else |err| {
+                    if (err == error.InvalidCharacter) {
+                        std.debug.print("[line {}] Error: Unexpected character: {c}\n", .{ line, lineSlice[index] });
+                        exit_code = 65;
+                        index += 1;
+                    } else if (err == error.EndOfInput) {
+                        break;
+                    }
                 }
             }
-            i += 1;
+
+            start = end + 1; // Move to next line
+            line += 1;
         }
     }
 
-    if (scanToken(0, 0)) |token| {
-        try printToken(token);
-    } else |err| {
-        std.debug.print("Error at EOF: {}\n", .{err});
-        exit_code = 65;
-    }
+    const eof_token = addToken(.EOF, "", null);
+    try printToken(eof_token);
 
     std.process.exit(exit_code);
 }
